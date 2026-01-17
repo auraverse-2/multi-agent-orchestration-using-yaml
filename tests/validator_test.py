@@ -1,7 +1,4 @@
-# test_validator.py
-
-from pprint import pprint
-from validator import validate_yaml   # <-- change filename if needed
+from .validator import validate_yaml
 
 
 # =====================================================
@@ -162,4 +159,4 @@ def run_tests():
 # =====================================================
 
 if __name__ == "__main__":
-    run_tests()
+  run_tests()
