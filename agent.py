@@ -1,5 +1,3 @@
-# tools_registry.py
-
 # 1. Define the specific instructions for every possible tool
 TOOL_DEFINITIONS = {
     "web_search": """
@@ -28,27 +26,39 @@ TOOL_DEFINITIONS = {
     """
 }
 
-def build_system_prompt(agent_config):
+def build_system_prompt(agent_config, all_agents_map):
     """
-    Dynamically constructs the prompt based on the agent's unique YAML config.
+    Dynamically builds the prompt, including Sub-Agents if they exist.
     """
     
-    # [cite_start]1. Base Identity (Role & Goal) [cite: 39, 40]
+    # 1. Base Identity
     prompt = f"""
-    ### ROLE ###
+    ### ROLE & GOAL ###
     You are: **{agent_config['role']}**
-    
-    ### GOAL ###
-    {agent_config['goal']}
+    Goal: **{agent_config['goal']}**
     """
-    
-    # [cite_start]2. Custom Instructions (Optional) [cite: 111, 125]
-    # If the YAML has an 'instruction' field, inject it.
-    if "instruction" in agent_config:
-        prompt += f"\n### BEHAVIORAL INSTRUCTIONS ###\n{agent_config['instruction']}\n"
 
-    # 3. Dynamic Tool Injection
-    # We only add instructions for the tools listed in the YAML
+    # 2. SUB-AGENTS (The New Part)
+    # Check if this agent has a 'sub_agents' list in the YAML
+    sub_agent_ids = agent_config.get('sub_agents', [])
+    
+    if sub_agent_ids:
+        prompt += "\n### AVAILABLE SUB-AGENTS ###\n"
+        prompt += "You can delegate tasks to these specialized agents:\n"
+        
+        for sub_id in sub_agent_ids:
+            # We look up the sub-agent's role to tell the Boss what they do
+            # (Assuming you have a map of all agents loaded)
+            sub_role = all_agents_map[sub_id]['role']
+            prompt += f"- `{sub_id}`: {sub_role}\n"
+            
+        prompt += """
+        **How to Delegate:**
+        Write: `CALL: delegate("agent_name", "task description")`
+        Example: `CALL: delegate("researcher", "Find the history of AI")`
+        """
+
+    # 3. STANDARD TOOLS (Web, Python, VectorDB)
     tool_list = agent_config.get('tools', [])
     
     if tool_list:
@@ -60,7 +70,14 @@ def build_system_prompt(agent_config):
                 prompt += definition
         
         prompt += "\nTo use a tool, write: `CALL: tool_name(args)`\n"
-    else:
-        prompt += "\nYou have NO tools. You must answer using your own knowledge.\n"
 
+    
+    prompt += """
+    ### RESPONSE FORMAT ###
+    Step 1: THOUGHT (Explain why you are delegating or using a tool)
+    Step 2: CALL (The specific tool or delegate call)
+    Step 3: OBSERVATION (Wait for the result)
+    Step 4: FINAL ANSWER
+    """
+    
     return prompt
