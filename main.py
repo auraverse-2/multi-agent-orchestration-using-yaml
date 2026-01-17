@@ -1,5 +1,7 @@
 from vector_db import VectorDB
 
+from logger import log
+
 
 db = VectorDB()
 
@@ -16,6 +18,6 @@ Operational Differences The key operational distinction lies in log management. 
 
 
 
-
-print("\n\n\n")
-print(db.search("Who developed the Paxos algorithm and when?"))
+log("MAIN", "test")
+log("MAIN", "\n\n\n")
+log("MAIN", db.search("Who developed the Paxos algorithm and when?"))
