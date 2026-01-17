@@ -1,37 +1,41 @@
 import re
-import json
-from api_client import APIClient
 from prompter import build_system_prompt
-from tools import run_python_code, web_search_mock 
+from tools.web_search import web_search
+from vector_db import VectorDB
+from model_factory import ModelFactory
+
+from agent_factory import spawn_agent
 
 class Agent:
-    def __init__(self, agent_config, all_agents_map):
+    def __init__(self, id, description, goal, db, tools=[], subagents=[], model='gemini-3-flash-preview'):
         """
         Args:
             agent_config (dict): Configuration from agents.yaml
             all_agents_map (dict): Access to other agents for delegation
         """
-        self.config = agent_config
-        self.all_agents_map = all_agents_map
-        self.id = agent_config['id']
-        self.max_turns = 8
+        self.id = id
+        self.max_turns = 100
         
-        # 1. Build the System Prompt using your prompter.py logic
-        self.system_prompt = build_system_prompt(agent_config, all_agents_map)
+        self.model = model
+        self.description = description
+        self.goal = goal
+        self.tools = tools
+        self.subagents = subagents
+        self.db = db
         
         # 2. Initialize the API Client (Memory is managed here)
         # You can change the model name here (e.g., "anthropic/claude-3.5-sonnet")
-        self.client = APIClient(model_name="openai/gpt-4o", system_prompt=self.system_prompt)
+        self.client = ModelFactory.create_adapter(model)
 
-    def run(self, user_task: str):
+    def run(self):
         """
         The Main Execution Loop.
         It bounces between the LLM and the Tools until a 'FINAL ANSWER' is found.
         """
-        print(f"\n🤖 [{self.id}] Starting Task: {user_task[:50]}...")
-        
-        # Step 1: Send the first user message
-        response_text = self.client.call(user_task)
+
+        prompt = build_system_prompt(self.description, self.goal, self.tools, self.subagents)
+        print(f"\n🤖 [{self.id}] Starting Task: {prompt[:50]}...")
+        response_text = self.client.generate(prompt)
 
         for turn in range(self.max_turns):
             # Print agent's thought process
@@ -83,13 +87,11 @@ class Agent:
             args_str = match.group(2).strip('"').strip("'") # Clean quotes
 
             if tool_name == "web_search":
-                return web_search_mock(args_str)
+                return web_search(args_str)
             
             elif tool_name == "retrieve_knowledge":
                 # Assuming you have a DB instance, or import it
-                from vector_store import VectorDB
-                db = VectorDB()
-                return db.search(args_str) or "No info found."
+                return self.db.search(args_str) or "No info found."
 
             elif tool_name == "delegate":
                 # Parse: "agent_id", "task"
@@ -110,15 +112,15 @@ class Agent:
         """Spins up a new Agent instance for the sub-task"""
         print(f"  👉 [{self.id}] delegating to -> [{target_id}]")
         
-        target_config = self.all_agents_map.get(target_id)
+        target_config = self.age.get(target_id)
         if not target_config:
             return f"Error: Agent '{target_id}' not found in configuration."
-            
-        # Create a new sub-agent
-        sub_agent = Agent(target_config, self.all_agents_map)
         
-        # Run it (Blocking call)
-        result = sub_agent.run(task)
+        subagents = self.subagents
+        subagents[target_id]['goal'] += task
+        subagent = spawn_agent(target_id, subagents)
+
+        result = subagent.run()
         
         return f"Result from {target_id}: {result}"
 

@@ -1,0 +1,19 @@
+agents:
+  - id: archivist
+    description: Internal Knowledge Specialist
+    goal: Retrieve information about "Project Apollo" from the internal vector database.
+    model: openai/gpt-4o-mini
+    tools:
+      - vector_db_search # Matches the key in your prompter.py TOOL_DEFINITIONS
+
+  - id: analyst
+    description: Senior Technical Writer
+    goal: Read the retrieved database information and write a one-paragraph summary.
+    model: openai/gpt-4o-mini
+    tools: [] # No tools needed; relies on the context passed from the archivist
+
+workflow:
+  type: sequential
+  steps:
+    - archivist
+    - analyst

@@ -1,44 +1,33 @@
-import os
+
 import requests
 
+from .llm_adapter import LLMAdapter
 
-class APIClient:
+import os
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+class OpenRouterAdapter(LLMAdapter):
     """
     Persistent OpenRouter API client with full conversation memory.
     One instance = one model + one conversation.
     """
 
-    def __init__(self, model_name: str, system_prompt: str | None = None):
+    def __init__(self, model_name: str):
         self.model_name = model_name
-        self.api_key = "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"
+        self.api_key = OPENROUTER_API_KEY
 
         if not self.api_key:
             raise RuntimeError("OPENROUTER_API_KEY not set")
 
         self.endpoint = "https://openrouter.ai/api/v1/chat/completions"
 
-        # Persistent state
-        self.call_count = 0
-        self.history = []
-
-        # THIS IS THE CONVERSATION MEMORY
         self.messages = []
 
-        # Optional system instruction (recommended)
-        if system_prompt:
-            self.messages.append({
-                "role": "system",
-                "content": system_prompt
-            })
-
-    def call(self, prompt: str) -> str:
+    def generate(self, prompt: str) -> str:
         """
         Send a prompt and continue the conversation automatically.
         """
-
-        self.call_count += 1
-
-        # 1. Add user message to conversation
         self.messages.append({
             "role": "user",
             "content": prompt
@@ -69,15 +58,14 @@ class APIClient:
 
         # 3. Add assistant reply to conversation
         self.messages.append({
-            "role": "assistant",
+            "role": "agent",
             "content": output_text
         })
 
-        # Optional logging (not sent back to model)
-        self.history.append({
-            "call_number": self.call_count,
-            "prompt": prompt,
-            "output": output_text
-        })
-
         return output_text
+
+    def get_provider_name(self) -> str:
+        return "openrouter"
+    
+    def get_model_name(self) -> str:
+        return self.model_name

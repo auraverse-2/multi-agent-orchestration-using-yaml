@@ -180,10 +180,8 @@ def normalize(data: Dict) -> Dict:
     for agent in data["agents"]:
         normalized_agents[agent["id"]] = {
             "model": agent.get("model"),
-            "role": agent.get("role"),
-            "goal": agent.get("goal"),
-            "description": agent.get("description"),
-            "instruction": agent.get("instruction"),
+            "description": agent.get("description") or agent.get("role"),
+            "goal": agent.get("instruction") or agent.get("goal"),
             "tools": agent.get("tools", []),
             "sub_agents": agent.get("sub_agents", [])
         }
@@ -246,7 +244,7 @@ def find_warnings(agent_ids: Set[str], normalized: Dict) -> List[Dict]:
 # 7. Public API
 # =====================================================
 
-def validate_yaml(yaml_text: str) -> Dict:
+def safe_load(yaml_text: str) -> Dict:
     data, parse_errors = parse_yaml(yaml_text)
     if parse_errors:
         return {"valid": False, "errors": parse_errors}
@@ -269,6 +267,6 @@ def validate_yaml(yaml_text: str) -> Dict:
 
     return {
         "valid": True,
-        "normalized_config": normalized,
+        "normalized_input": normalized,
         "warnings": warnings
     }

@@ -1,0 +1,31 @@
+# ---------------------------------------------------------
+# Test Configuration using gpt-4o-mini
+# ---------------------------------------------------------
+
+agents:
+  - id: manager
+    role: "Central Coordinator"
+    goal: "Break down user requests and delegate specialized tasks to the research and analysis team."
+    model: "openai/gpt-4o-mini"
+    sub_agents: ["researcher", "analyst"]
+    tools: ["vector_db_search"]
+    instruction: "Your primary job is to coordinate. If the user asks a multi-step question, delegate the parts to your sub-agents."
+
+  - id: researcher
+    role: "Information Scraper"
+    goal: "Find verified facts from the web and retrieve context from the local database."
+    model: "openai/gpt-4o-mini"
+    tools: ["web_search", "vector_db_search"]
+    instruction: "Focus on speed and accuracy. Always summarize search results into 3 key bullet points."
+
+  - id: analyst
+    role: "Code-Based Analyst"
+    goal: "Process numerical data and generate charts or calculations using Python."
+    model: "openai/gpt-4o-mini"
+    tools: ["python"]
+    instruction: "Whenever math is involved, you must use the 'python' tool. Do not calculate in your head."
+
+workflow:
+  type: sequential
+  steps:
+    - agent: manager

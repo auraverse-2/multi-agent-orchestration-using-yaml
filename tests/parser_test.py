@@ -1,4 +1,4 @@
-from .validator import validate_yaml
+from ..validator import safe_load
 
 
 # =====================================================
@@ -134,7 +134,7 @@ def run_tests():
         print(f"TEST CASE: {name}")
         print("=" * 80)
 
-        result = validate_yaml(yaml_text)
+        result = safe_load(yaml_text)
         print(result)
 
         # if not result["valid"]:
