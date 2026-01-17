@@ -1,7 +1,9 @@
 import streamlit as st
 import yaml
 import os
-# from agent import run_orchestration # Import your agent logic here
+import json
+# Import the public API from your validator.py file
+from validator import validate_yaml 
 
 # --- Page Config ---
 st.set_page_config(layout="wide", page_title="Multi-Agent Orchestrator")
@@ -23,7 +25,10 @@ col1, col2 = st.columns([1, 1], gap="medium")
 with col1:
     st.header("📝 Configuration Editor")
     
-    # Default YAML template for Agent Orchestration
+    # --- 1. FILE UPLOADER COMPONENT ---
+    uploaded_file = st.file_uploader("Upload an Agent Config (.yaml)", type=["yaml", "yml"])
+
+    # Default YAML template
     default_yaml = """agents:
   - id: researcher
     role: Research Assistant
@@ -40,50 +45,74 @@ workflow:
 
 task: "Explain the benefits of Model Context Protocol (MCP) in AI." """
     
-    yaml_input = st.text_area("Edit YAML Logic:", value=default_yaml, height=450)
+    # Logic to handle uploaded file content
+    if uploaded_file is not None:
+        try:
+            # Read the file and update the session state
+            file_content = uploaded_file.getvalue().decode("utf-8")
+            st.session_state.yaml_input = file_content
+            st.success("File uploaded and loaded into editor!")
+        except Exception as e:
+            st.error(f"Error reading file: {e}")
+    
+    # Initialize editor content if it doesn't exist
+    if "yaml_input" not in st.session_state:
+        st.session_state.yaml_input = default_yaml
+
+    # 2. THE EDITOR (Binds to session state)
+    yaml_input = st.text_area("Edit YAML Logic:", value=st.session_state.yaml_input, height=400)
 
     if st.button("🚀 Run Orchestration", use_container_width=True):
         if not yaml_input:
             st.error("Please provide YAML configuration first.")
         else:
-            with st.spinner("Agents are collaborating via MCP..."):
-                try:
-                    # 1. Parse the YAML configuration
-                    config = yaml.safe_load(yaml_input)
-                    
-                    # 2. TRIGGER YOUR AGENT LOGIC HERE
-                    # In your real setup, you'll call: 
-                    # result = run_orchestration(config)
-                    
-                    # Mocking a response for the UI demonstration
-                    mock_response = "Agents have successfully processed the task using MCP. " \
-                                    "The researcher identified connectivity benefits, and the writer " \
-                                    "summarized them into this response."
-                    
-                    st.session_state.result = mock_response
-                    st.toast("Orchestration Complete!", icon="✅")
-                    
-                except Exception as e:
-                    st.error(f"Orchestration Error: {e}")
+            # --- 3. CALL THE VALIDATOR ---
+            validation_result = validate_yaml(yaml_input)
+
+            if not validation_result["valid"]:
+                st.error("❌ YAML Validation Failed")
+                for err in validation_result["errors"]:
+                    st.markdown(f"**[{err['type']}]** {err['message']}")
+            else:
+                st.session_state.normalized_config = validation_result["normalized_config"]
+                
+                if validation_result.get("warnings"):
+                    for warn in validation_result["warnings"]:
+                        st.warning(f"⚠️ **{warn['type']}:** {warn['message']}")
+
+                with st.spinner("Validator passed. Agents are collaborating via MCP..."):
+                    try:
+                        # Simulated Agent Logic
+                        mock_response = "Agents successfully processed the task using the validated configuration. " \
+                                        "The researcher identified connectivity benefits, and the writer " \
+                                        "summarized them into this response."
+                        
+                        st.session_state.result = mock_response
+                        st.toast("Orchestration Complete!", icon="✅")
+                    except Exception as e:
+                        st.error(f"Orchestration Error: {e}")
 
 with col2:
     st.header("📊 Evaluation Panel")
     
     if "result" in st.session_state:
+        # 1. View Normalized Config
+        with st.expander("🔍 View Normalized Configuration", expanded=False):
+            st.json(st.session_state.normalized_config)
+
+        st.divider()
+
+        # 2. View Agent Output
         st.subheader("Final Agent Output")
-        st.markdown(f"""
-            <div class="success-box">
-                {st.session_state.result}
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown(f'<div class="success-box">{st.session_state.result}</div>', unsafe_allow_html=True)
         
         st.divider()
         st.write("**Orchestration Metrics:**")
         st.json({
             "Status": "Success",
-            "Agents_Active": 2,
-            "MCP_Connection": "Active",
-            "Mode": "Sequential"
+            "Agents_Active": len(st.session_state.normalized_config["agents"]),
+            "Validation": "Passed",
+            "MCP_Connection": "Active"
         })
     else:
         st.info("The agents' output and MCP evaluation data will appear here.")
