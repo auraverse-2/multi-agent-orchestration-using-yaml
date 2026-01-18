@@ -86,12 +86,9 @@ def render_app():
                     with st.spinner("Executing workflow..."):
                         try:
                             # Simulated Agent Logic
-                            run_workflow(validation_result["normalized_input"])
-                            mock_response = "Agents successfully processed the task using the validated configuration. " \
-                                            "The researcher identified connectivity benefits, and the writer " \
-                                            "summarized them into this response."
+                            response = run_workflow(validation_result["normalized_input"])
                             
-                            st.session_state.result = mock_response
+                            st.session_state.result = response
                             st.toast("Orchestration Complete!", icon="✅")
                         except Exception as e:
                             traceback.print_exc()

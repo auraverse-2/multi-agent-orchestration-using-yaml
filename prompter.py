@@ -1,81 +1,69 @@
-# 1. Define the specific instructions for every possible tool
+import json
+
 TOOL_DEFINITIONS = {
     "web_search": """
-    - `web_search(query)`: Use this for external facts. 
+    - `web_search(query)`: Search external internet.
       Example: CALL: web_search("Tesla stock price")
     """,
-    
     "python": """
-    - `run_python`: execute Python code.
-      **INSTRUCTIONS:**
-      1. Write the Python code inside a markdown block (```python ... ```).
-      2. IMMEDIATELY after the block, write the tool trigger: `CALL: run_python`
-      
-      **Example:**
+    - `run_python`: Execute Python code.
+      Example:
       ```python
-      def calculate_growth(start, end):
-          return (end - start) / start * 100
-      print(calculate_growth(100, 150))
+      print(1+1)
       ```
       CALL: run_python
     """,
-    
     "vector_db_search": """
-    - `retrieve_knowledge(query)`: Use this for internal documents.
-      Example: CALL: retrieve_knowledge("previous report")
+    - `retrieve_knowledge(query)`: Search internal docs for specific facts or concepts.
+      Example: CALL: retrieve_knowledge("Q3 2024 revenue growth analysis")
     """
 }
 
 def build_system_prompt(description, goal, tools=[], subagents=[]):
-    """
-    Dynamically builds the prompt, including Sub-Agents if they exist.
-    """
     
-    # 1. Base Identity
     prompt = f"""
-    ### ROLE & GOAL ###
+    ### ROLE ###
     You are: **{description}**
-    Goal: **{goal}**
+    
+    ### GOAL ###
+    **{goal}**
+    
+    ### STRICT CONSTRAINTS (CRITICAL) ###
+    1. **ONLY** use the tools explicitly listed below.
+    2. **DO NOT** use any other tools (e.g. no 'multi_tool_use', no 'browser', no 'python_repl' unless listed).
+    3. If you do not have a tool for a task, you must fail gracefully or ask for clarification.
+    4. **DO NOT** generate the 'OBSERVATION' step yourself. You must PAUSE after a CALL.
     """
 
-    # 2. SUB-AGENTS (The New Part)
-    # Check if this agent has a 'sub_agents' list in the YAML
-    
+    # --- SUB-AGENTS ---
     if subagents:
-        prompt += "\n### AVAILABLE SUB-AGENTS ###\n"
-        prompt += "You can delegate tasks to these specialized agents:\n"
-        
+        prompt += "\n### ALLOWED DELEGATES ###\n"
         for subagent in subagents:
-            # We look up the sub-agent's role to tell the Boss what they do
-            # (Assuming you have a map of all agents loaded)
-            sub_role = subagent['role']
-            prompt += f"- `{subagent['id']}`: {sub_role}\n"
-            
-        prompt += """
-        **How to Delegate:**
-        Write: `CALL: delegate("agent_name", "task description")`
-        Example: `CALL: delegate("researcher", "Find the history of AI")`
-        """
+            prompt += f"- `{subagent['id']}`: {subagent['role']}\n"
+        prompt += "To delegate: `CALL: delegate(\"agent_id\", \"task\")`\n"
 
-    # 3. STANDARD TOOLS (Web, Python, VectorDB)
-    
+    # --- TOOLS ---
     if tools:
-        prompt += "\n### AVAILABLE TOOLS ###\nYou have access to the following tools:\n"
+        prompt += "\n### ALLOWED TOOLS ###\n"
         for tool_name in tools:
-            # Look up the definition in our registry
             definition = TOOL_DEFINITIONS.get(tool_name)
             if definition:
                 prompt += definition
-        
-        prompt += "\nTo use a tool, write: `CALL: tool_name(args)`\n"
+        prompt += "\nFormat: `CALL: tool_name(args)`\n"
+    else:
+        prompt += "\n### NO TOOLS AVAILABLE ###\nYou must answer using only your internal knowledge.\n"
 
-    
+    # --- MINIMALIST RESPONSE FORMAT ---
     prompt += """
-    ### RESPONSE FORMAT ###
-    Step 1: THOUGHT (Explain why you are delegating or using a tool)
-    Step 2: CALL (The specific tool or delegate call)
-    Step 3: OBSERVATION (Wait for the result)
-    Step 4: FINAL ANSWER
+    ### RESPONSE FORMAT (CHOOSE ONE) ###
+
+    **Option 1: Action Required**
+    THOUGHT: (One sentence explaining why)
+    CALL: [Tool/Delegate Name]
+    (STOP GENERATING HERE)
+
+    **Option 2: Final Answer**
+    FINAL ANSWER: [Your Answer]
     """
     
     return prompt

@@ -1,4 +1,4 @@
-def spawn_agent(agent_id, agent_list, db=None):
+def spawn_agent(agent_id, agent_list, dbs=None):
     # Local import to avoid circular import at module load time
     from agent import Agent
 
@@ -16,7 +16,7 @@ def spawn_agent(agent_id, agent_list, db=None):
         agent_id,
         agent_config.get('description'),
         agent_config.get('goal'),
-        db,
+        dbs,
         model=agent_config.get('model'),
         tools=agent_config.get('tools', []),
         subagents=subagents,

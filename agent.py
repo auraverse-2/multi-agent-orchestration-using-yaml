@@ -4,27 +4,28 @@ from tools.web_search import web_search
 from vector_db import VectorDB
 from model_factory import ModelFactory
 import time
+from logger import log
 
 from models.google_adapter import GoogleAdapter
 
 from agent_factory import spawn_agent
 
 class Agent:
-    def __init__(self, id, description, goal, db, model, tools=[], subagents=[]):
+    def __init__(self, id, description, goal, dbs, model, tools=[], subagents=[]):
         """
         Args:
             agent_config (dict): Configuration from agents.yaml
             all_agents_map (dict): Access to other agents for delegation
         """
         self.id = id
-        self.max_turns = 100
+        self.max_turns = 20
         
         self.model = model or 'gemini-3-flash-preview'
         self.description = description
         self.goal = goal
         self.tools = tools
         self.subagents = subagents
-        self.db = db
+        self.dbs = dbs
         
         # 2. Initialize the API Client (Memory is managed here)
         # You can change the model name here (e.g., "anthropic/claude-3.5-sonnet")
@@ -39,61 +40,45 @@ class Agent:
         """
 
         prompt = build_system_prompt(self.description, self.goal, self.tools, self.subagents)
-        print("\n\n")
-        print(prompt)
-        print("\n\n")
-        g = GoogleAdapter('gemini-3-flash-preview')
-        response_text = g.generate(prompt)
-        # for attempt in range(5):
-        #     try:
-        #         response_text = self.client.generate(prompt)
-        #         break # Success!
-        #     except Exception as e:
-        #         if "429" in str(e) or "limit" in str(e).lower():
-        #             wait = (2 ** attempt) + 1
-        #             print(f"  ⚠️ Rate limit hit. Waiting {wait}s...")
-        #             time.sleep(wait)
-        #         else:
-        #             raise e # Real error, crash
-        
-        # # If we still have no response, stop
-        # if not response_text:
-        #     return "Error: API Rate limit exceeded."
+
+        response_text = self._fetch_llm_response(prompt)
 
         # print(f"  ✅ Initial Plan: {response_text[:100]}...")
-        print(response_text)
-        # for turn in range(self.max_turns):
-        #     # Print agent's thought process
-        #     self._log_response(response_text)
-        #     time.sleep(2)
-        #     # CHECK: Did the agent finish?
-        #     if "FINAL ANSWER" in response_text:
-        #         return response_text.split("FINAL ANSWER")[-1].strip()
+        log(f"[{self.id}]", response_text)
+        for turn in range(self.max_turns):
+            # Print agent's thought process
+            time.sleep(2)
+            # CHECK: Did the agent finish?
+            if "FINAL ANSWER" in response_text:
+                final_answer = response_text.split("FINAL ANSWER")[-1].strip()
+                self.dbs[0].add(final_answer, self.id)
+                return final_answer
 
-        #     # CHECK: Did the agent call a tool?
-        #     if "CALL:" in response_text:
-        #         # 1. Execute the tool
-        #         tool_output = self._execute_tool(response_text)
+            # CHECK: Did the agent call a tool?
+            if "CALL:" in response_text:
+                # 1. Execute the tool
+                tool_output = self._execute_tool(response_text)
                 
-        #         # 2. Format the observation
-        #         observation = f"OBSERVATION: {tool_output}"
-        #         print(f"  ⚙️ [System]: {str(tool_output)[:60]}...")
+                # 2. Format the observation
+                observation = f"OBSERVATION: {tool_output}"
 
-        #         # 3. Send the observation back to the LLM
-        #         # The APIClient automatically appends this as a User message
-        #         response_text = self.client.generate(observation)
+                # 3. Send the observation back to the LLM
+                # The APIClient automatically appends this as a User message
+                response_text = self._fetch_llm_response(observation)
+                print("ABC");
+                print(response_text)
             
-        #     else:
-        #         # If no tool called and no final answer, the model might be "thinking" 
-        #         # or asking a clarification question. We just continue.
-        #         if turn == self.max_turns - 1:
-        #             return "Error: Agent reached max turns limit."
+            else:
+                # If no tool called and no final answer, the model might be "thinking" 
+                # or asking a clarification question. We just continue.
+                if turn == self.max_turns - 1:
+                    return "Error: Agent reached max turns limit."
                 
-        #         # If it's just talking, we can return the text or wait for user input.
-        #         # For this engine, we assume it must act or finish.
-        #         pass
+                # If it's just talking, we can return the text or wait for user input.
+                # For this engine, we assume it must act or finish.
+                pass
         
-        # return "Error: Loop limit reached."
+        return "Error: Loop limit reached."
 
     def _execute_tool(self, text: str):
         """Parses the 'CALL:' command and runs the matching Python function."""
@@ -116,7 +101,10 @@ class Agent:
             
             elif tool_name == "retrieve_knowledge":
                 # Assuming you have a DB instance, or import it
-                return self.db.search(args_str) or "No info found."
+                knowledge = []
+                for db in self.dbs:
+                    knowledge.append(db.search(args_str))
+                return knowledge or "No info found."
 
             elif tool_name == "delegate":
                 # Parse: "agent_id", "task"
@@ -149,9 +137,23 @@ class Agent:
         
         return f"Result from {target_id}: {result}"
 
-    def _log_response(self, text):
-        """Helper to pretty-print the agent's thoughts"""
-        if "THOUGHT" in text:
-            # Extract just the thought part
-            thought = text.split("THOUGHT")[-1].split("CALL")[0].strip()
-            print(f"  💭 [Thought]: {thought[:100]}...")
+    def _fetch_llm_response(self, prompt):
+        response_text = ""
+        for attempt in range(5):
+            try:
+                response_text = self.client.generate(prompt)
+                break # Success!
+            except Exception as e:
+                if "429" in str(e) or "limit" in str(e).lower():
+                    wait = (2 ** attempt) + 1
+                    print(f"  ⚠️ Rate limit hit. Waiting {wait}s...")
+                    time.sleep(wait)
+                else:
+                    raise e # Real error, crash
+        
+        # If we still have no response, stop
+        if not response_text:
+            raise "Error: API Rate limit exceeded."
+        
+        return response_text
+
