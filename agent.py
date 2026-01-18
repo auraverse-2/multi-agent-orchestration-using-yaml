@@ -6,7 +6,8 @@ from model_factory import ModelFactory
 import time
 from logger import log
 
-from models.google_adapter import GoogleAdapter
+from tools.run_python import run_python_code
+from tools.fetch_local_file import fetch_local_file
 
 from agent_factory import spawn_agent
 
@@ -95,7 +96,8 @@ class Agent:
 
             if tool_name == "web_search":
                 return web_search(args_str)
-            
+            elif tool_name == "fetch_local_file":
+                return fetch_local_file(args_str)
             elif tool_name == "retrieve_knowledge":
                 # Assuming you have a DB instance, or import it
                 knowledge = []

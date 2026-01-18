@@ -1,41 +1,53 @@
-import urllib.parse
-from urllib.error import URLError
-from urllib.request import Request, urlopen
-import trafilatura
+import os
+import requests
+import json
+from logger import log
 
-MAX_RETRIES = 5 
-REQUEST_HDRS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Connection': 'keep-alive'
-}
+def web_search(query: str) -> str:
+    """
+    Performs a Google Search via Serper.dev.
+    Returns a formatted string of snippets that the agent can read.
+    """
+    # 1. Configuration
+    api_key = os.getenv("SERPER_API_KEY")
+    if not api_key:
+        return "ERROR: SERPER_API_KEY environment variable not set."
 
-def is_valid_url(url):
-    """Checks if the string has a valid protocol/scheme."""
-    parsed = urllib.parse.urlparse(url)
-    return bool(parsed.scheme and parsed.netloc)
+    url = "https://google.serper.dev/search"
+    payload = json.dumps({"q": query, "num": 5})
+    headers = {
+        'X-API-KEY': api_key,
+        'Content-Type': 'application/json'
+    }
+    log("WEB SEARCH", f"Searching for: '{query}'", True)
 
-def web_search(query_or_url):
-    target_url = query_or_url
-    
-    # 1. If it's not a URL, format it as a Google Search
-    if not is_valid_url(query_or_url):
-        print(f"Input is not a URL. Searching Google for: {query_or_url}")
-        encoded_query = urllib.parse.quote_plus(query_or_url)
-        target_url = f"https://www.google.com/search?q={encoded_query}"
+    try:
+        # 2. Make the API Call
+        response = requests.post(url, headers=headers, data=payload, timeout=10)
+        response.raise_for_status()
+        search_results = response.json()
 
-    # 2. Attempt to fetch
-    for attempt in range(MAX_RETRIES):
-        try:
-            req = Request(target_url, headers=REQUEST_HDRS)
-            with urlopen(req, timeout=10) as response:
-                return trafilatura.extract(response.read())
-        except (ConnectionResetError, URLError, Exception) as e:
-            print(f"Attempt {attempt + 1} failed: {e}")
-            if attempt == MAX_RETRIES - 1:
-                # 3. Final Fallback: If URL fetch failed, try searching it on Google anyway
-                if target_url == query_or_url:
-                    print("URL fetch failed. Retrying as Google Search...")
-                    return web_search(f"https://www.google.com/search?q={urllib.parse.quote_plus(query_or_url)}")
-                
-    raise Exception(f"Could not process request for: {query_or_url}")
+        # 3. Parse and Format the results
+        # We focus on 'organic' results which contain the snippets
+        organic_results = search_results.get("organic", [])
+        
+        if not organic_results:
+            return f"No search results found for: '{query}'"
+
+        formatted_output = ["### SEARCH RESULTS ###"]
+        
+        for i, result in enumerate(organic_results, 1):
+            title = result.get("title", "No Title")
+            snippet = result.get("snippet", "No snippet available.")
+            link = result.get("link", "No link available.")
+            
+            # This structured format helps the LLM recognize facts immediately
+            formatted_output.append(f"{i}. {title}")
+            formatted_output.append(f"   Snippet: {snippet}")
+            formatted_output.append(f"   Source: {link}\n")
+
+        log('WEB SEARCH', formatted_output, True)
+        return "\n".join(formatted_output)
+
+    except requests.exceptions.RequestException as e:
+        return f"TOOL ERROR: The search API failed with the following error: {str(e)}"

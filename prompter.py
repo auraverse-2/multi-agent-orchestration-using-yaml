@@ -14,6 +14,11 @@ TOOL_DEFINITIONS = {
     "vector_db_search": """
     - `retrieve_knowledge(query)`: Search internal docs for specific facts or concepts.
       Example: CALL: retrieve_knowledge("Q3 2024 revenue growth analysis")
+    """,
+    "fetch_local_file": """
+    - `fetch_local_file(file_path)`: Reads the text content of a local file.
+      Use this to see project files, logs, or data exports.
+      Example: CALL: fetch_local_file("data/results.csv")
     """
 }
 

@@ -28,6 +28,6 @@ class VectorDB:
     def search(self, query):
         results = self.collection.query(query_texts=[query], n_results=1)
         if results['documents'] and len(results['documents'][0]) > 0:
-            log("FETCHED FROM DB", results['documents'][0])
+            log("FETCHED FROM DB", results['documents'][0], tool=True)
             return results['documents'][0]
         return ["No matching data found."]
