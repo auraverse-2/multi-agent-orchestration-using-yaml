@@ -1,4 +1,4 @@
-def spawn_agent(agent_id, agent_list, dbs=None):
+def spawn_agent(agent_id, agent_list, dbs=None, allow_db_ref=True):
     # Local import to avoid circular import at module load time
     from agent import Agent
 
@@ -10,6 +10,9 @@ def spawn_agent(agent_id, agent_list, dbs=None):
         for subagent_id in agent_config.get('subagents', [])
         if subagent_id in agent_list
     ]
+    tools = agent_config.get('tools', [])
+    if (allow_db_ref):
+        tools.append('vector_db_search')
 
     # Pass `db` explicitly (Agent expects db as the 4th arg)
     return Agent(
@@ -18,6 +21,6 @@ def spawn_agent(agent_id, agent_list, dbs=None):
         agent_config.get('goal'),
         dbs,
         model=agent_config.get('model'),
-        tools=agent_config.get('tools', []),
+        tools=tools,
         subagents=subagents,
     )

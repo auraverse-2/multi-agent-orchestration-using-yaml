@@ -30,7 +30,6 @@ class Agent:
         # 2. Initialize the API Client (Memory is managed here)
         # You can change the model name here (e.g., "anthropic/claude-3.5-sonnet")
         model_factory = ModelFactory
-        print(self.model)
         self.client = model_factory.create_adapter(self.model)
 
     def run(self):
@@ -44,13 +43,13 @@ class Agent:
         response_text = self._fetch_llm_response(prompt)
 
         # print(f"  ✅ Initial Plan: {response_text[:100]}...")
-        log(f"[{self.id}]", response_text)
+        log(self.id, response_text)
         for turn in range(self.max_turns):
             # Print agent's thought process
             time.sleep(2)
             # CHECK: Did the agent finish?
             if "FINAL ANSWER" in response_text:
-                final_answer = response_text.split("FINAL ANSWER")[-1].strip()
+                final_answer = response_text.split("FINAL ANSWER")[-1].strip().lstrip(":").strip()
                 self.dbs[0].add(final_answer, self.id)
                 return final_answer
 
@@ -65,8 +64,6 @@ class Agent:
                 # 3. Send the observation back to the LLM
                 # The APIClient automatically appends this as a User message
                 response_text = self._fetch_llm_response(observation)
-                print("ABC");
-                print(response_text)
             
             else:
                 # If no tool called and no final answer, the model might be "thinking" 
@@ -153,7 +150,7 @@ class Agent:
         
         # If we still have no response, stop
         if not response_text:
-            raise "Error: API Rate limit exceeded."
-        
+            raise Exception("Error: API Rate limit exceeded.")
+        log(self.id, response_text)
         return response_text
 

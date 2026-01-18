@@ -16,7 +16,23 @@ def render_app():
     st.markdown("""
         <style>
         .stTextArea textarea { font-family: 'Courier New', Courier, monospace; background-color: #1e1e1e; color: #d4d4d4; }
-        .success-box { background-color: #1e1e1e; padding: 20px; border-radius: 10px; color: #00ff00; border: 1px solid #00ff00; font-family: 'Courier New', monospace; }
+        .success-box { 
+            background-color: #1e1e1e;      /* Keep dark background */
+            padding: 25px;                  /* More breathing room */
+            border-radius: 8px;             /* Slightly softer corners */
+            
+            /* Typography Changes */
+            font-family: Georgia, 'Times New Roman', Times, serif; 
+            color: #e0e0e0;                 /* Off-white is easier to read than neon green */
+            font-size: 18px;                /* Slightly larger for paragraph reading */
+            line-height: 1.6;               /* Crucial: adds space between lines */
+            letter-spacing: 0.02em;         /* Slight spacing improvement */
+            
+            /* Border Styling */
+            border: 1px solid #333;         /* Subtle outer border */
+            border-left: 5px solid #4CAF50; /* Thick green accent on the left to show 'Success' */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); /* subtle depth */
+        }
         .stButton>button { border-radius: 5px; height: 3em; background-color: #4CAF50; color: white; }
         </style>
         """, unsafe_allow_html=True)
@@ -98,24 +114,18 @@ def render_app():
         st.header("📊 Evaluation Panel")
         
         if "result" in st.session_state:
-            # 1. View Normalized Config
-            with st.expander("🔍 View Normalized Configuration", expanded=False):
-                st.json(st.session_state.normalized_input)
-
+            with st.expander("**Orchestration Metrics:**", expanded=False):
+                st.json({
+                    "Status": "Success",
+                    "Agents_Active": len(st.session_state.normalized_input["agents"]),
+                    "Validation": "Passed",
+                    "MCP_Connection": "Active"
+                })
             st.divider()
-
-            # 2. View Agent Output
             st.subheader("Final Agent Output")
             st.markdown(f'<div class="success-box">{st.session_state.result}</div>', unsafe_allow_html=True)
             
-            st.divider()
-            st.write("**Orchestration Metrics:**")
-            st.json({
-                "Status": "Success",
-                "Agents_Active": len(st.session_state.normalized_input["agents"]),
-                "Validation": "Passed",
-                "MCP_Connection": "Active"
-            })
+
         else:
             st.info("The agents' output and MCP evaluation data will appear here.")
 

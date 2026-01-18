@@ -6,7 +6,6 @@ agents:
   - id: writer
     role: Content Writer
     goal: Write a concise summary using the research
-    tools: [vector_db_search]
 
 workflow:
   type: sequential

@@ -27,15 +27,15 @@ def run_workflow(normalized_input):
     res = ""
     if normalized_input['workflow']['type'] == 'sequential':
         db = VectorDB()
-        for step in normalized_input['workflow']['order']:
-            agent = spawn_agent(step, agent_list, [db])
+        for i, step in enumerate(normalized_input['workflow']['order']):
+            agent = spawn_agent(step, agent_list, [db], False) if i == 0 else spawn_agent(step, agent_list, [db])
             res = agent.run()
 
     elif normalized_input['workflow']['type'] == 'parallel':
         dbList = []
         for step in normalized_input['workflow']['branches']:
             dbList.append(VectorDB())
-            agent = spawn_agent(step, agent_list, [dbList[-1]])
+            agent = spawn_agent(step, agent_list, [dbList[-1]], False)
             agent.run()
         agent = spawn_agent(normalized_input['workflow']['then'], agent_list, dbList)
         res = agent.run()
