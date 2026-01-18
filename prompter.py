@@ -32,7 +32,7 @@ def build_system_prompt(description, goal, tools=[], subagents=[]):
     **{goal}**
     
     ### STRICT CONSTRAINTS (CRITICAL) ###
-    1. **ONLY** use the tools explicitly listed below.
+    1. **ONLY** use the tools/delegates explicitly listed below.
     2. **DO NOT** use any other tools (e.g. no 'multi_tool_use', no 'browser', no 'python_repl' unless listed).
     3. If you do not have a tool for a task, you must fail gracefully or ask for clarification.
     4. **DO NOT** generate the 'OBSERVATION' step yourself. You must PAUSE after a CALL.
@@ -42,7 +42,7 @@ def build_system_prompt(description, goal, tools=[], subagents=[]):
     if subagents:
         prompt += "\n### ALLOWED DELEGATES ###\n"
         for subagent in subagents:
-            prompt += f"- `{subagent['id']}`: {subagent['role']}\n"
+            prompt += f"- `{subagent['id']}`: {subagent['description']}\n"
         prompt += "To delegate: `CALL: delegate(\"agent_id\", \"task\")`\n"
 
     # --- TOOLS ---

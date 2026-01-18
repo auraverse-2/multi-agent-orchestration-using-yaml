@@ -12,7 +12,7 @@ from tools.fetch_local_file import fetch_local_file
 from agent_factory import spawn_agent
 
 class Agent:
-    def __init__(self, id, description, goal, dbs, model, tools=[], subagents=[]):
+    def __init__(self, id, description, goal, dbs, model, tools=[], subagents=[], agents_list=[]):
         """
         Args:
             agent_config (dict): Configuration from agents.yaml
@@ -21,25 +21,28 @@ class Agent:
         self.id = id
         self.max_turns = 20
         
-        self.model = model or 'gemini-3-flash-preview'
+        self.model = model or 'gpt-4o-mini'
         self.description = description
         self.goal = goal
         self.tools = tools
         self.subagents = subagents
         self.dbs = dbs
-        
+        self.agents_list = agents_list
         # 2. Initialize the API Client (Memory is managed here)
         # You can change the model name here (e.g., "anthropic/claude-3.5-sonnet")
         model_factory = ModelFactory
         self.client = model_factory.create_adapter(self.model)
 
-    def run(self):
+    def run(self, task=""):
         """
         The Main Execution Loop.
         It bounces between the LLM and the Tools until a 'FINAL ANSWER' is found.
         """
-
-        prompt = build_system_prompt(self.description, self.goal, self.tools, self.subagents)
+        prompt = ""
+        if task:
+            prompt = task
+        else:
+            prompt = build_system_prompt(self.description, self.goal, self.tools, self.subagents)
 
         response_text = self._fetch_llm_response(prompt)
 
@@ -124,15 +127,9 @@ class Agent:
         """Spins up a new Agent instance for the sub-task"""
         print(f"  👉 [{self.id}] delegating to -> [{target_id}]")
         
-        target_config = self.age.get(target_id)
-        if not target_config:
-            return f"Error: Agent '{target_id}' not found in configuration."
-        
-        subagents = self.subagents
-        subagents[target_id]['goal'] += task
-        subagent = spawn_agent(target_id, subagents)
+        subagent = spawn_agent(target_id, self.agents_list)
 
-        result = subagent.run()
+        result = subagent.run(task)
         
         return f"Result from {target_id}: {result}"
 

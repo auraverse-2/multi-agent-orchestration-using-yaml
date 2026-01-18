@@ -29,8 +29,8 @@ class OpenAIAdapter(LLMAdapter):
                 messages=self.messages
             )
             self.messages.append({
-                "role": "agent",
-                "content": response
+                "role": "assistant",
+                "content": response.choices[0].message.content  # ← Extract content string here
             })
             return response.choices[0].message.content
         except Exception as e:

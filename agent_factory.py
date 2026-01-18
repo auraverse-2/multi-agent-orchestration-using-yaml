@@ -4,10 +4,9 @@ def spawn_agent(agent_id, agent_list, dbs=None, allow_db_ref=True):
 
     # Look up the agent configuration by the provided agent_id
     agent_config = agent_list[agent_id]
-
     subagents = [
         {**agent_list[subagent_id], "id": subagent_id}
-        for subagent_id in agent_config.get('subagents', [])
+        for subagent_id in agent_config.get('sub_agents', [])
         if subagent_id in agent_list
     ]
     tools = agent_config.get('tools', [])
@@ -23,4 +22,5 @@ def spawn_agent(agent_id, agent_list, dbs=None, allow_db_ref=True):
         model=agent_config.get('model'),
         tools=tools,
         subagents=subagents,
+        agents_list=agent_list
     )
