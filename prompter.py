@@ -1,5 +1,3 @@
-import json
-
 TOOL_DEFINITIONS = {
     "web_search": """
     - `web_search(query)`: Search external internet.

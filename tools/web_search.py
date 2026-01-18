@@ -1,6 +1,7 @@
 import urllib.parse
 from urllib.error import URLError
 from urllib.request import Request, urlopen
+import trafilatura
 
 MAX_RETRIES = 5 
 REQUEST_HDRS = {
@@ -28,7 +29,7 @@ def web_search(query_or_url):
         try:
             req = Request(target_url, headers=REQUEST_HDRS)
             with urlopen(req, timeout=10) as response:
-                return response.read()
+                return trafilatura.extract(response.read())
         except (ConnectionResetError, URLError, Exception) as e:
             print(f"Attempt {attempt + 1} failed: {e}")
             if attempt == MAX_RETRIES - 1:
