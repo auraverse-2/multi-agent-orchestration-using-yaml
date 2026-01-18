@@ -1,6 +1,7 @@
 import streamlit as st
 from yaml_parser import safe_load 
 from workflow_executor import run_workflow
+import traceback
 from dotenv import load_dotenv
 
 
@@ -93,6 +94,7 @@ def render_app():
                             st.session_state.result = mock_response
                             st.toast("Orchestration Complete!", icon="✅")
                         except Exception as e:
+                            traceback.print_exc()
                             st.error(f"Orchestration Error: {e}")
 
     with col2:

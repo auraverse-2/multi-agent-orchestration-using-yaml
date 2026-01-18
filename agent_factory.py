@@ -17,7 +17,7 @@ def spawn_agent(agent_id, agent_list, db=None):
         agent_config.get('description'),
         agent_config.get('goal'),
         db,
+        model=agent_config.get('model'),
         tools=agent_config.get('tools', []),
         subagents=subagents,
-        model=agent_config.get('model', 'gemini-3-flash-preview')
     )
